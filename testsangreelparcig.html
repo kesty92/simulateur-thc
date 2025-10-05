@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Simulateur THC par nombre de joints et intervalle</title>
+<style>
+  body { font-family: Arial; padding: 20px; }
+  label { display: block; margin: 5px 0; }
+  table, th, td { border: 1px solid black; border-collapse: collapse; }
+  th, td { padding: 5px; text-align: center; }
+  .over { background-color: #f88; }
+  .under { background-color: #8f8; }
+</style>
+</head>
+<body>
+
+<h2>Simulateur THC par nombre de joints avec intervalle</h2>
+
+<label>Nombre total de joints : <input type="number" id="numJoints" value="10"></label>
+<label>Grammes par joint : <input type="number" step="0.01" id="grams" value="0.5"></label>
+<label>Taux THC (%) : <input type="number" step="0.01" id="thcRate" value="0.3"></label>
+<label>Intervalle entre joints (heures) : <input type="number" step="0.1" id="interval" value="1"></label>
+<label>Poids (kg) : <input type="number" step="1" id="weight" value="55"></label>
+<label>Sexe : 
+  <select id="sex">
+    <option value="male">Homme</option>
+    <option value="female">Femme</option>
+  </select>
+</label>
+<label>Demi-vie THC (heures) : <input type="number" step="0.1" id="halfLife" value="1.5"></label>
+<label>Seuil légal THC (ng/mL) : <input type="number" step="0.01" id="seuil" value="1.0"></label>
+
+<button onclick="calculer()">Calculer</button>
+
+<h3>Résultats</h3>
+<p id="infoSeuil"></p>
+<table id="resultTable">
+<thead>
+<tr><th>Joint n°</th><th>THC cumulatif (ng/mL)</th><th>État</th></tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<script>
+function calculer() {
+  const numJoints = parseInt(document.getElementById('numJoints').value) || 0;
+  const grams = parseFloat(document.getElementById('grams').value) || 0;
+  const thcRate = (parseFloat(document.getElementById('thcRate').value) || 0) / 100;
+  const interval = parseFloat(document.getElementById('interval').value) || 1;
+  const weight = parseFloat(document.getElementById('weight').value) || 70;
+  const sex = document.getElementById('sex').value;
+  const halfLife = parseFloat(document.getElementById('halfLife').value) || 1.5;
+  const seuil = parseFloat(document.getElementById('seuil').value) || 1.0;
+
+  const k = Math.log(2)/halfLife;
+  let factor = 0.18;
+  if(sex === "female") factor *= 1.1;
+  factor *= 70/weight;
+
+  const tbody = document.querySelector("#resultTable tbody");
+  tbody.innerHTML = "";
+
+  let seuilJoint = null;
+  let cumulativeTHC = 0;
+
+  for(let i=1; i<=numJoints; i++){
+    // chaque joint ajoute son THC résiduel selon l'intervalle
+    let THC_mg = grams*1000*thcRate;
+    cumulativeTHC = cumulativeTHC * Math.exp(-k*interval) + THC_mg * factor;
+    cumulativeTHC = parseFloat(cumulativeTHC.toFixed(3));
+
+    let etat = cumulativeTHC > seuil ? "⚠️ > seuil légal" : "✅ sous seuil";
+    if(cumulativeTHC > seuil && seuilJoint === null){
+      seuilJoint = i;
+    }
+
+    const row = document.createElement("tr");
+    row.className = cumulativeTHC > seuil ? "over" : "under";
+    row.innerHTML = `<td>${i}</td><td>${cumulativeTHC}</td><td>${etat}</td>`;
+    tbody.appendChild(row);
+  }
+
+  document.getElementById("infoSeuil").innerText = seuilJoint !== null
+    ? `Seuil légal dépassé après le joint numéro : ${seuilJoint}`
+    : "Le THC reste sous le seuil légal pour tous les joints";
+}
+</script>
+
+</body>
+</html>
